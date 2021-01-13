@@ -9,56 +9,60 @@ library(sf)
 library(ggplot2)
 library(leaflet)
 library(hrbrthemes)
+library(readr)
 
-# Data ----------------------------------------------------------------------------
+# Download and extract data -------------------------------------------------------
 
 # Download metadata folder
-download.file("https://t.co/rHlECQs5k2?amp=1", "parler_vids_metadata.tar.gz")
+# download.file("https://t.co/rHlECQs5k2?amp=1", "parler_vids_metadata.tar.gz")
 
 # Files
-fls <- list.files("metadata", full.names = T)
+# fls <- list.files("metadata", full.names = T)
 
 # Function to extract GPS data
-read_metadata <- function(pos, files) {
-  
-  md <- jsonlite::fromJSON(files[pos])
-  
-  if ("GPSPosition" %in% names(md)) {
+# read_metadata <- function(pos, files) {
+#  
+# md <- jsonlite::fromJSON(files[pos])
+#  
+# if ("GPSPosition" %in% names(md)) {
+#    
+#   if ("CreateDate" %in% names(md)) {
+#      
+#     p1 <- md %>% dplyr::select(CreateDate, GPSLatitude, GPSLongitude)
+#      
+#   } else {
+#      
+#     p1 <- md %>% 
+#       dplyr::select(GPSLatitude, GPSLongitude) %>% 
+#       dplyr::mutate(CreateDate = NA)
+#      
+#   }
     
-    if ("CreateDate" %in% names(md)) {
-      
-      p1 <- md %>% dplyr::select(CreateDate, GPSLatitude, GPSLongitude)
-      
-    } else {
-      
-      p1 <- md %>% 
-        dplyr::select(GPSLatitude, GPSLongitude) %>% 
-        dplyr::mutate(CreateDate = NA)
-      
-    }
-    
-    # Add name of metadata file
-    p1 <- p1 %>% dplyr::mutate(file = files[pos])
+#   # Add name of metadata file
+#   p1 <- p1 %>% dplyr::mutate(file = files[pos])
   
-    } else {
+#   } else {
       
-      p1 <- NULL
+#     p1 <- NULL
       
-    }
+#   }
   
-  # Pos
-  if (pos %% 100 == 0) cat(".")
-  if (pos %% 1000 == 0) cat(pos, "\n")
+# # Pos
+# if (pos %% 100 == 0) cat(".")
+# if (pos %% 1000 == 0) cat(pos, "\n")
   
-  # Return
-  return(p1)
+# # Return
+# return(p1)
   
-  }
+# }
 
 # Read Metadata
-plan(strategy = "multisession")
-dt <- future_map_dfr(1:length(fls), read_metadata, files = fls)
-saveRDS(dt, "parler_vids_metadata.rds")
+# plan(strategy = "multisession")
+# dt <- future_map_dfr(1:length(fls), read_metadata, files = fls)
+# saveRDS("parler_vids_metadata.rds)
+
+# Load data -----------------------------------------------------------------------
+
 dt <- readRDS("parler_vids_metadata.rds")
 
 # Functions for tidy lon/lat
@@ -86,7 +90,11 @@ dt2 <- dt %>%
   mutate(CreateDate = ymd_hms(CreateDate)) %>% 
   mutate(lat = map_dbl(GPSLatitude, tidy_lat)) %>% 
   mutate(lon = map_dbl(GPSLongitude, tidy_lon)) %>% 
-  filter(!(lat == 0 & lon == 0))
+  filter(!(lat == 0 & lon == 0)) %>% 
+  filter(!is.na(CreateDate)) %>% 
+  arrage(desc(CreateDate))
+
+readr::write_excel_csv(dt2, "parler_vids_geolocation_time.csv")
 
 # Capitol 2021-6-1 ----------------------------------------------------------------
 
@@ -145,4 +153,4 @@ ggplot() +
     caption = "\nData: t.co/rHlECQs5k2?amp=1"
   ) 
 
-ggsave("parler_ch.png", dpi = 500, width = 8, height = 5)
+ggsave("parler_ch.png", dpi = 500)
